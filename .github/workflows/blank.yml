@@ -1,0 +1,93 @@
+name: Publish Production Firefox Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Automatically runs and creates a release on tags (e.g., v120.0)
+  workflow_dispatch:
+
+jobs:
+  release-windows:
+    runs-on: windows-2022
+    permissions:
+      contents: write # Crucial permission for creating a GitHub release
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Maximize Disk Space
+        shell: powershell
+        run: |
+          Write-Host "Clearing cache and heavy packages to make room for full compilation..."
+          Remove-Item -Recurse -Force "C:\Program Files\Android" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "C:\hostedtoolcache\windows\CodeQL" -ErrorAction SilentlyContinue
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download Mozilla Bootstrap Script
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://mozilla.org" -OutFile "bootstrap.py"
+
+      - name: Run Mozilla Bootstrap (Full Desktop Mode)
+        shell: cmd
+        run: |
+          :: Choice 2 initiates a full C++ desktop compile instead of basic artifact mockups
+          python bootstrap.py --no-interactive --application-choice=browser
+
+      - name: Clone Firefox Source Code
+        shell: cmd
+        run: |
+          if not exist "mozilla-unified" (
+              git clone https://github.com/mozilla/gecko-dev.git mozilla-unified
+          )
+          
+      - name: Configure Production Build Options (mozconfig)
+        shell: powershell
+        run: |
+          # --enable-release configures full Rust/C++ optimization loops for deployment
+          $mozconfig = @"
+          ac_add_options --target=x86_64-pc-mingw32
+          ac_add_options --enable-optimize
+          ac_add_options --enable-release
+          ac_add_options --disable-debug
+          "@
+          $mozconfig | Out-File -FilePath "mozilla-unified\.mozconfig" -Encoding ascii
+
+      - name: Compile Firefox Source
+        shell: cmd
+        working-directory: mozilla-unified
+        run: |
+          python mach build
+
+      - name: Build Official Windows Installer Packages
+        shell: cmd
+        working-directory: mozilla-unified
+        run: |
+          :: Packs application binaries, compresses to 7-zip, and constructs setup.exe
+          python mach package
+
+      - name: Stash Release Installers
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path .\deploy-bins
+          # Copy target executable installer bundles and packaged zip binaries
+          Copy-Item -Path "mozilla-unified\obj-*\dist\install\sea\*.exe" -Destination .\deploy-bins\ -ErrorAction SilentlyContinue
+          Copy-Item -Path "mozilla-unified\obj-*\dist\*.zip" -Destination .\deploy-bins\ -ErrorAction SilentlyContinue
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            deploy-bins/*.exe
+            deploy-bins/*.zip
+          name: "Firefox Windows Release ${{ github.ref_name }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
