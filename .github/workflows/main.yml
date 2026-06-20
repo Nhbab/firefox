@@ -1,85 +1,30 @@
-name: Build Firefox for Windows
-
+name: Build Waterfox Remote
 on:
-  push:
-    tags:
-      - 'v*' # Triggers automatically when you push a tag like v1.0.0
-  workflow_dispatch: # Allows you to still trigger it manually
+  workflow_dispatch: # Cho phép bạn kích hoạt thủ công từ iPhone
 
 jobs:
-  build-windows:
-    runs-on: windows-2022
-    permissions:
-      contents: write # Crucial permission required to create/edit releases
+  build:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Free Disk Space
-        shell: powershell
-        run: |
-          Remove-Item -Recurse -Force "C:\Program Files\Android" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "C:\hostedtoolcache\windows\CodeQL" -ErrorAction SilentlyContinue
-
-      - name: Set up Python
+      - name: Setup Python and Build Tools
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Download Mozilla Bootstrap Script
-        shell: powershell
+      - name: Run Waterfox Bootstrap
         run: |
-          Invoke-WebRequest -Uri "https://mozilla.org" -OutFile "bootstrap.py"
+          # Chạy script cấu hình môi trường của hệ thống Firefox/Waterfox
+          ./mach bootstrap --application-choice=browser 
 
-      - name: Run Mozilla Bootstrap
-        shell: cmd
+      - name: Compile Waterfox
         run: |
-          python bootstrap.py --no-interactive --application-choice=browser
+          ./mach build
 
-      - name: Clone Firefox Source Code
-        shell: cmd
-        run: |
-          if not exist "mozilla-unified" (
-              git clone https://github.com mozilla-unified
-          )
-          
-      - name: Configure Build (mozconfig)
-        shell: powershell
-        run: |
-          $mozconfig = @"
-          ac_add_options --target=x86_64-pc-mingw32
-          ac_add_options --enable-optimize
-          ac_add_options --disable-debug
-          "@
-          $mozconfig | Out-File -FilePath "mozilla-unified\.mozconfig" -Encoding ascii
-
-      - name: Build Firefox
-        shell: cmd
-        working-directory: mozilla-unified
-        run: |
-          python mach build
-
-      - name: Package Firefox
-        shell: cmd
-        working-directory: mozilla-unified
-        run: |
-          python mach package
-
-      # Staging step to gather files cleanly for the release action
-      - name: Prepare Release Artifacts
-        shell: powershell
-        run: |
-          New-Item -ItemType Directory -Force -Path .\release-artifacts
-          Copy-Item -Path "mozilla-unified\obj-*\dist\*.zip" -Destination .\release-artifacts\ -ErrorAction SilentlyContinue
-          Copy-Item -Path "mozilla-unified\obj-*\dist\*.exe" -Destination .\release-artifacts\ -ErrorAction SilentlyContinue
-
-      - name: Create GitHub Release and Upload Installer
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: |
-            release-artifacts/*.zip
-            release-artifacts/*.exe
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: waterfox-binaries
+          path: objdir-*/dist/
