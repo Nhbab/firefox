@@ -16,8 +16,8 @@ jobs:
       - name: Install MozillaBuild
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://mozilla.org" -OutFile "MozillaBuildSetup.exe"
-          Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
+          Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "MozillaBuildSetup.exe"
+          Start-Process -FilePath ".\MozillaBuildSetup-Latest.exe" -ArgumentList "/S" -Wait
           # Mặc định bộ công cụ sẽ được cài vào C:\mozilla-build
 
       - name: Configure Mozconfig
