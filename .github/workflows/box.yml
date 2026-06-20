@@ -1,0 +1,49 @@
+name: Build Firefox Windows Vista💾
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Support Long Paths
+        run: |
+          git config --global core.longpaths true
+
+      - name: Checkout Firefox Source
+        uses: actions/checkout@v4
+
+      - name: Install MozillaBuild
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://mozilla.org" -OutFile "MozillaBuildSetup.exe"
+          Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
+          # Mặc định bộ công cụ sẽ được cài vào C:\mozilla-build
+
+      - name: Configure Mozconfig
+        shell: powershell
+        run: |
+          $mozconfig = @"
+          ac_add_options --target=x86_64-pc-mingw32
+          ac_add_options --enable-application=browser
+          ac_add_options --enable-artifact-builds
+          ac_add_options --disable-debug
+          ac_add_options --enable-optimize
+          "@
+          $mozconfig | Out-File -FilePath .mozconfig -Encoding ascii
+
+      - name: Build Firefox using MozillaBuild
+        shell: cmd
+        run: |
+          call C:\mozilla-build\start-shell.bat cd "%cd%" && ./mach build
+
+      - name: Package Windows Installer
+        shell: cmd
+        run: |
+          call C:\mozilla-build\start-shell.bat cd "%cd%" && ./mach package
+
+      - name: Upload Windows Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-windows-x64-dist
+          path: objdir-*/dist/*.zip
