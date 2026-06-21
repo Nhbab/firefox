@@ -21,7 +21,7 @@ jobs:
           # Mặc định bộ công cụ sẽ được cài vào C:\mozilla-build
 
       - name: Build Waterfox
-        shell: poweeshell
+        shell: powershell
         run: |
           ./mach build
 
