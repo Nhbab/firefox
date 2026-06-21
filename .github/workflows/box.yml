@@ -21,14 +21,14 @@ jobs:
           # Mặc định bộ công cụ sẽ được cài vào C:\mozilla-build
 
       - name: Build Waterfox
-        shell: cmd
+        shell: poweeshell
         run: |
-          call C:\mozilla-build\start-shell.bat cd "%cd%" && ./mach build
+          ./mach build
 
       - name: Package Installer
-        shell: cmd
+        shell: powershell
         run: |
-          call C:\mozilla-build\start-shell.bat cd "%cd%" && ./mach package
+          ./mach package
 
       - name: Prepare Release Artifacts
         shell: powershell
