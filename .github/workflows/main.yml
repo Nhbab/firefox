@@ -31,4 +31,5 @@ jobs:
           body: "Automated Linux build compiled successfully via iPhone 17 Pro Max."
           draft: false
           prerelease: false
-          files: staging/*
+          files: |
+            staging/*
