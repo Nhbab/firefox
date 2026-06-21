@@ -20,30 +20,36 @@ jobs:
           Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
           # Mặc định bộ công cụ sẽ được cài vào C:\mozilla-build
 
-      - name: Configure Mozconfig
-        shell: powershell
-        run: |
-          $mozconfig = @"
-          ac_add_options --target=x86_64-pc-mingw32
-          ac_add_options --enable-application=browser
-          ac_add_options --enable-artifact-builds
-          ac_add_options --disable-debug
-          ac_add_options --enable-optimize
-          "@
-          $mozconfig | Out-File -FilePath .mozconfig -Encoding ascii
-
-      - name: Build Firefox using MozillaBuild
+      - name: Build Waterfox
         shell: cmd
         run: |
           call C:\mozilla-build\start-shell.bat cd "%cd%" && ./mach build
 
-      - name: Package Windows Installer
+      - name: Package Installer
         shell: cmd
         run: |
           call C:\mozilla-build\start-shell.bat cd "%cd%" && ./mach package
 
-      - name: Upload Windows Build Artifact
-        uses: actions/upload-artifact@v4
+      - name: Prepare Release Artifacts
+        shell: powershell
+        run: |
+          mkdir staging
+          # Search everywhere inside the workspace for packaged zip and exe files
+          Get-ChildItem -Path . -Filter *.zip -Recurse | Copy-Item -Destination staging\
+          Get-ChildItem -Path . -Filter *.exe -Recurse | Copy-Item -Destination staging\
+          
+          # Fallback check to ensure files exist before moving to release step
+          if ((Get-ChildItem staging).Count -eq 0) {
+            Write-Error "No packaged build files found!"
+            exit 1
+          }
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: firefox-windows-x64-dist
-          path: objdir-*/dist/*.zip
+          tag_name: "win-v${{ github.run_number }}"
+          name: "Waterfox Windows Build #${{ github.run_number }}"
+          body: "Automated Windows build compiled successfully via iPhone 17 Pro Max."
+          draft: false
+          prerelease: false
+          files: staging/*
