@@ -1,4 +1,4 @@
-name: Build Firefox Windows Release (MSVC-Only)
+name: Build Firefox Windows Release (MSVC Cross)
 on:
   workflow_dispatch:
 
@@ -7,6 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # Explicitly isolates and resets variables to block any hidden text leaks
+    env:
+      MOZ_APP_VERSION: "130.0"
+      BUILDID: "20260622000000"
     steps:
       - name: Checkout Firefox Source
         uses: actions/checkout@v4
@@ -16,24 +20,21 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Utilities
+      - name: Install System Utilities
         run: |
           sudo apt-get update
           sudo apt-get install -y zip unzip uuid-dev
 
-      - name: Sanitize Core Build Version
+      - name: Sanitize Local Code Version Files
         run: |
-          # Forces the internal version back to an integer to satisfy the telemetry parser
+          # Overwrites local repository configs to protect the internal python parsers
           echo -n "130.0" > browser/config/version.txt
-          echo "Sanitized version.txt to 130.0 for compiler stability."
+          echo -n "130.0" > config/milestone.txt
+          echo "Sanitized all codebase version files to 130.0."
 
-      - name: Run Firefox Bootstrap
+      - name: Configure Cross-Compile MSVC Mozconfig
         run: |
-          # Bypasses the local toolchain/Visual Studio SDK asset validation check
-          ./mach bootstrap --application-choice=browser --enable-bootstrap=no-update
-
-      - name: Configure MSVC Mozconfig
-        run: |
+          # Forces the modern MSVC target signature directly on the Linux runner host
           echo "ac_add_options --target=x86_64-pc-windows-msvc" > .mozconfig
           echo "ac_add_options --enable-application=browser" >> .mozconfig
           echo "ac_add_options --enable-artifact-builds" >> .mozconfig
@@ -42,16 +43,17 @@ jobs:
 
       - name: Assemble Firefox Windows Binaries
         run: |
+          # Cross-compiles and extracts the Windows assembly components natively
           ./mach build
 
-      - name: Package Target Artifacts
+      - name: Package Windows Artifacts Manually
         run: |
           mkdir -p staging/firefox-windows
           
-          # Extracts the compiled windows binaries from the artifact architecture directory
+          # Extracts the generated windows files out of the artifact directory structure
           cp -r obj-*/dist/bin/* staging/firefox-windows/ || cp -r obj-*/dist/bin staging/firefox-windows/
           
-          # Compresses the asset directory using your custom string tag
+          # Use standard Linux zip utility to compress the Windows distribution folder
           cd staging && zip -r ../firefox-biui_selected-windows-x64.zip firefox-windows/
 
       - name: Create GitHub Release
@@ -59,7 +61,7 @@ jobs:
         with:
           tag_name: "v-biui_selected-win"
           name: "Firefox Windows v-biui_selected"
-          body: "Official Firefox Windows MSVC architecture package cross-assembled on Linux via iPhone 17 Pro Max."
+          body: "Automated custom-labeled Firefox Windows MSVC build cross-assembled via iPhone 17 Pro Max."
           draft: false
           prerelease: false
           files: firefox-biui_selected-windows-x64.zip
