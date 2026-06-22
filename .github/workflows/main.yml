@@ -17,6 +17,7 @@ jobs:
 
       - name: Compile Waterfox
         run: |
+          ./mach bootstrap --application-choice=browser 
           ./mach build
 
       - name: Create GitHub Release
