@@ -69,7 +69,7 @@ jobs:
           # Tự động lùng sục tệp firefox.exe trong mọi thư mục đối tượng được tạo ra
           Get-ChildItem -Path . -Filter "firefox.exe" -Recurse | ForEach-Object {
               $binDir = $_.Directory.FullName
-              Compress-Archive -Path "$binDir\*" -DestinationPath "staging\firefox-biui_selected-windows-x64.zip" -Force
+              Compress-Archive -Path "$binDir\*" -DestinationPath "firefox-154.0a1-windows-x64.zip" -Force
           }
 
       - name: Create GitHub Release
