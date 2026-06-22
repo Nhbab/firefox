@@ -36,7 +36,7 @@ jobs:
           
           echo "Found Windows binary path at: $BIN_DIR"
           cp -r "$BIN_DIR"/* staging/firefox-windows/
-          cd staging && zip -r ../firefox-biui_selected-windows-x64.zip firefox-windows/
+          cd staging && zip -r ../firefox-154.0a1-windows-x64.zip firefox-windows/
 
 
       - name: Create GitHub Release
