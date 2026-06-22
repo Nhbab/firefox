@@ -1,9 +1,9 @@
-name: Build Firefox Windows Release (MSVC Cross)
+name: Build Firefox Linux Release
 on:
   workflow_dispatch:
 
 jobs:
-  build-windows-msvc:
+  build-linux:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -30,11 +30,10 @@ jobs:
           echo -n "130.0" > config/milestone.txt
           echo "Sanitized all codebase version files to 130.0."
 
-      - name: Configure Cross-Compile MSVC Mozconfig
+      - name: Configure Linux Mozconfig
         run: |
-          # Overwrite and create a fresh .mozconfig strictly for Windows target assembly
+          # Creates a fresh .mozconfig optimized for the Linux artifact build
           cat << 'EOF' > .mozconfig
-          ac_add_options --target=x86_64-pc-windows-msvc
           ac_add_options --enable-application=browser
           ac_add_options --enable-artifact-builds
           ac_add_options --disable-debug
@@ -42,25 +41,26 @@ jobs:
           echo "=== Verified .mozconfig Contents ==="
           cat .mozconfig
 
-      - name: Assemble Firefox Windows Binaries
+      - name: Assemble Firefox Linux Binaries
         run: |
           ./mach build
 
-      - name: Package Windows Artifacts Manually
+      - name: Package Linux Artifacts Manually
         run: |
-          mkdir -p staging/firefox-windows
+          mkdir -p staging/firefox-browser
           
-          # Extracts the compiled windows binaries from the newly generated msvc object directory
-          cp -r obj-x86_64-pc-windows-msvc/dist/bin/* staging/firefox-windows/ || cp -r obj-*/dist/bin/* staging/firefox-windows/
+          # Extracts the compiled linux binaries from the native object folder tree
+          cp -r obj-x86_64-pc-linux-gnu/dist/bin/* staging/firefox-browser/ || cp -r obj-*/dist/bin/* staging/firefox-browser/
           
-          cd staging && zip -r ../firefox-biui_selected-windows-x64.zip firefox-windows/
+          # Compresses the browser folder under your custom tag identifier
+          tar -czf firefox-biui_selected-linux-x64.tar.gz -C staging firefox-browser
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v-biui_selected-win"
-          name: "Firefox Windows v-biui_selected"
-          body: "Automated custom-labeled Firefox Windows MSVC build cross-assembled via iPhone 17 Pro Max."
+          tag_name: "v-biui_selected-linux"
+          name: "Firefox Linux v-biui_selected"
+          body: "Automated custom-labeled Firefox Linux build compiled via iPhone 17 Pro Max."
           draft: false
           prerelease: false
-          files: firefox-biui_selected-windows-x64.zip
+          files: firefox-biui_selected-linux-x64.tar.gz
