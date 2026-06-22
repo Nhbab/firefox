@@ -22,6 +22,21 @@ jobs:
       - name: Compile Waterfox
         run: |
           ./mach build
+      - name: Auto-Find and Package Windows Binaries
+        run: |
+          mkdir -p staging/firefox-windows
+          
+          # Dynamically locate the main Windows executable folder inside the build space
+          BIN_DIR=$(find . -type d -path "*/obj-*/dist/bin" | head -n 1)
+          
+          if [ -z "$BIN_DIR" ] || [ ! -f "$BIN_DIR/firefox.exe" ]; then
+            echo "Error: Could not locate compiled Windows binaries!"
+            exit 1
+          fi
+          
+          echo "Found Windows binary path at: $BIN_DIR"
+          cp -r "$BIN_DIR"/* staging/firefox-windows/
+          cd staging && zip -r ../firefox-biui_selected-windows-x64.zip firefox-windows/
 
 
       - name: Create GitHub Release
