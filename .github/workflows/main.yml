@@ -14,10 +14,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Run Waterfox Bootstrap
-        run: |
-          # Chạy script cấu hình môi trường của hệ thống Firefox/Waterfox
-          ./mach bootstrap --application-choice=browser 
 
       - name: Compile Waterfox
         run: |
