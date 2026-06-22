@@ -1,59 +1,28 @@
-name: Build Firefox Linux Release
+name: Build Waterfox Remote
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Cho phép bạn kích hoạt thủ công từ iPhone
 
 jobs:
-  build-linux:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      MOZ_APP_VERSION: "130.0"
-      BUILDID: "20260622000000"
     steps:
-      - name: Checkout Firefox Source
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Setup Python and Build Tools
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install System Utilities
+      - name: Run Waterfox Bootstrap
         run: |
-          sudo apt-get update
-          sudo apt-get install -y zip unzip uuid-dev
+          # Chạy script cấu hình môi trường của hệ thống Firefox/Waterfox
+          ./mach bootstrap --application-choice=browser 
 
-      - name: Sanitize Local Code Version Files
-        run: |
-          echo -n "130.0" > browser/config/version.txt
-          echo -n "130.0" > config/milestone.txt
-          echo "Sanitized all codebase version files to 130.0."
-
-      - name: Configure Linux Mozconfig
-        run: |
-          # Creates a fresh .mozconfig optimized for the Linux artifact build
-          cat << 'EOF' > .mozconfig
-          ac_add_options --enable-application=browser
-          ac_add_options --enable-artifact-builds
-          ac_add_options --disable-debug
-          EOF
-          echo "=== Verified .mozconfig Contents ==="
-          cat .mozconfig
-
-      - name: Assemble Firefox Linux Binaries
+      - name: Compile Waterfox
         run: |
           ./mach build
 
-      - name: Package Linux Artifacts Manually
-        run: |
-          mkdir -p staging/firefox-browser
-          
-          # Extracts the compiled linux binaries from the native object folder tree
-          cp -r obj-x86_64-pc-linux-gnu/dist/bin/* staging/firefox-browser/ || cp -r obj-*/dist/bin/* staging/firefox-browser/
-          
-          # Compresses the browser folder under your custom tag identifier
-          tar -czf firefox-biui_selected-linux-x64.tar.gz -C staging firefox-browser
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
