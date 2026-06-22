@@ -30,9 +30,6 @@ jobs:
       - name: Configure Mozconfig
         run: |
           echo "ac_add_options --enable-application=browser" > .mozconfig
-          echo "ac_add_options --enable-artifact-builds" >> .mozconfig
-          echo "ac_add_options --disable-debug" >> .mozconfig
-          echo "ac_add_options --enable-optimize" >> .mozconfig
 
       - name: Compile Firefox
         run: |
