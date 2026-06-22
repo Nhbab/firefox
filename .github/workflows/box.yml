@@ -47,26 +47,16 @@ jobs:
           Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "MozillaBuildSetup.exe"
           Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
 
-      - name: Configure Mozconfig
-        shell: powershell
-        run: |
-          $mozconfig = @"
-          ac_add_options --target=x86_64-pc-mingw32
-          ac_add_options --enable-application=browser
-          ac_add_options --enable-artifact-builds
-          ac_add_options --disable-debug
-          ac_add_options --enable-optimize
-          "@
-          $mozconfig | Out-File -FilePath .mozconfig -Encoding ascii
 
       - name: Compile Firefox
         shell: cmd
         run: |
-          call C:\mozilla-build\start-shell.bat cd "%cd%" && ./mach build
+          ./mach build
 
       - name: Package Windows Binaries
         shell: powershell
         run: |
+         ./mach package
           mkdir staging
           Get-ChildItem -Path . -Filter "firefox.exe" -Recurse | ForEach-Object {
               $binDir = $_.Directory.FullName
