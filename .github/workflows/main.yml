@@ -7,6 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # Explicitly overrides and resets any global ambient environment variables
+    env:
+      MOZ_APP_VERSION: "130.0"
+      BUILDID: "20260622000000"
     steps:
       - name: Checkout Firefox Source
         uses: actions/checkout@v4
@@ -16,24 +20,30 @@ jobs:
         with:
           python-version: '3.11'
 
-
+      - name: Check and Reset Local Version Files
+        run: |
+          # Confirms the exact state of versioning configurations
+          echo -n "130.0" > browser/config/version.txt
+          echo -n "130.0" > config/milestone.txt
+          
+          echo "=== Active Configuration Check ==="
+          echo "Source file version: $(cat browser/config/version.txt)"
 
       - name: Configure Mozconfig
         run: |
           echo "ac_add_options --enable-application=browser" > .mozconfig
-
+          echo "ac_add_options --enable-artifact-builds" >> .mozconfig
+          echo "ac_add_options --disable-debug" >> .mozconfig
+          echo "ac_add_options --enable-optimize" >> .mozconfig
 
       - name: Compile Firefox
         run: |
-          # The engine will dynamically configure and fetch objects without relying on a bootstrap call
           ./mach build
 
       - name: Package Firefox Binaries
         run: |
           mkdir -p staging/firefox-browser
           cp -r obj-*/dist/bin/* staging/firefox-browser/ || cp -r obj-*/dist/bin staging/firefox-browser/
-          
-          # Compresses the binary package under your chosen custom tag identifier
           tar -czf firefox-biui_selected-linux-x64.tar.gz -C staging firefox-browser
 
       - name: Create GitHub Release
@@ -41,7 +51,7 @@ jobs:
         with:
           tag_name: "v-biui_selected-linux"
           name: "Firefox Linux v-biui_selected"
-          body: "Automated custom-branded Firefox Linux build compiled via iPhone 17 Pro Max."
+          body: "Automated custom-labeled Firefox Linux build compiled via iPhone 17 Pro Max."
           draft: false
           prerelease: false
           files: firefox-biui_selected-linux-x64.tar.gz
