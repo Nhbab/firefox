@@ -12,10 +12,24 @@ jobs:
         run: |
           git config --global core.longpaths true
 
-      - name: Maximize Virtual Memory
-        uses: alfredodor/set-swap-space@v1.0
-        with:
-          swap-size-gb: 12
+      - name: Configure Native Windows Virtual Memory
+        shell: powershell
+        run: |
+          # Disable automatic pagefile management to manually override limits
+          $ComputerSystem = Get-CimInstance Win32_ComputerSystem
+          $ComputerSystem.AutomaticManagedPagefile = $False
+          Set-CimInstance -CimInstance $ComputerSystem
+          
+          # Configure a fixed 12GB pagefile to protect against background out-of-memory exits
+          $PageFile = Get-CimInstance Win32_PageFileSetting | Where-Object {$_.Name -like "C:\pagefile.sys"}
+          if ($PageFile) {
+              $PageFile.InitialSize = 12288
+              $PageFile.MaximumSize = 12288
+              Set-CimInstance -CimInstance $PageFile
+          } else {
+              New-CimInstance -ClassName Win32_PageFileSetting -Property @{Name="C:\pagefile.sys"; InitialSize=12288; MaximumSize=12288}
+          }
+          Write-Host "Configured native 12GB Windows virtual swap space."
 
       - name: Checkout Firefox Source
         uses: actions/checkout@v4
