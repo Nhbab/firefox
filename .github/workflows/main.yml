@@ -1,24 +1,51 @@
-name: Build Waterfox Remote
+name: Build Firefox Linux Release
 on:
-  workflow_dispatch: # Cho phép bạn kích hoạt thủ công từ iPhone
+  workflow_dispatch:
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Checkout Source Code
+      - name: Checkout Firefox Source
         uses: actions/checkout@v4
 
-      - name: Setup Python and Build Tools
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-
-      - name: Compile Waterfox
+      - name: Sanitize Core Build Version
         run: |
-          ./mach bootstrap --application-choice=browser 
+          # Resets internal version config to an integer to satisfy the telemetry parser
+          echo -n "130.0" > browser/config/version.txt
+          echo "Sanitized version.txt to 130.0 for compiler stability."
+
+      - name: Run Firefox Bootstrap
+        run: |
+          # Bypasses local toolchain/system updates to prevent runner dependency crashes
+          ./mach bootstrap --application-choice=browser --enable-bootstrap=no-update
+
+      - name: Configure Mozconfig
+        run: |
+          echo "ac_add_options --enable-application=browser" > .mozconfig
+          echo "ac_add_options --enable-artifact-builds" >> .mozconfig
+          echo "ac_add_options --disable-debug" >> .mozconfig
+          echo "ac_add_options --enable-optimize" >> .mozconfig
+
+      - name: Compile Firefox
+        run: |
           ./mach build
+
+      - name: Package Firefox Binaries
+        run: |
+          mkdir -p staging/firefox-browser
+          # Copies loose artifact binaries from the standard object directory
+          cp -r obj-*/dist/bin/* staging/firefox-browser/ || cp -r obj-*/dist/bin staging/firefox-browser/
+          
+          # Compresses the binary package under your chosen custom tag identifier
+          tar -czf firefox-biui_selected-linux-x64.tar.gz -C staging firefox-browser
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
