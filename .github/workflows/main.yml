@@ -26,10 +26,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "linux-v${{ github.run_number }}"
-          name: "Waterfox Linux Build #${{ github.run_number }}"
-          body: "Automated Linux build compiled successfully via iPhone 17 Pro Max."
+          tag_name: "v-biui_selected-linux"
+          name: "Firefox Linux v-biui_selected"
+          body: "Automated custom-branded Firefox Linux build compiled via iPhone 17 Pro Max."
           draft: false
           prerelease: false
-          files: |
-            staging/*
+          files: firefox-biui_selected-linux-x64.tar.gz
