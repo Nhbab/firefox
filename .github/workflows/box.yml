@@ -34,7 +34,7 @@ jobs:
       - name: Configure Cross-Compile Mozconfig
         run: |
           # Targets Windows 64-bit while running on top of a Linux OS machine
-          echo "ac_add_options --target=x86_64-pc-mingw32" > .mozconfig
+          echo "ac_add_options --target=x86_64-pc-windows-msvc" > .mozconfig
 
 
       - name: Compile Firefox Windows Binary
