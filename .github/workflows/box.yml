@@ -1,55 +1,70 @@
-name: Build Firefox Windows Vista💾
+name: Build Firefox Windows Release
 on:
   workflow_dispatch:
 
 jobs:
   build-windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - name: Support Long Paths
         run: |
           git config --global core.longpaths true
 
+      - name: Maximize Virtual Memory
+        uses: alfredodor/set-swap-space@v1.0
+        with:
+          swap-size-gb: 12
+
       - name: Checkout Firefox Source
         uses: actions/checkout@v4
+
+      - name: Set Custom Firefox Version
+        id: get_version
+        shell: powershell
+        run: |
+          # Injects your text string safely inside the Windows context variable
+          echo "FF_VERSION=biui_selected" >> $env:GITHUB_OUTPUT
 
       - name: Install MozillaBuild
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe" -OutFile "MozillaBuildSetup.exe"
+          Invoke-WebRequest -Uri "https://mozilla.org" -OutFile "MozillaBuildSetup.exe"
           Start-Process -FilePath ".\MozillaBuildSetup.exe" -ArgumentList "/S" -Wait
-          # Mặc định bộ công cụ sẽ được cài vào C:\mozilla-build
 
-      - name: Build Waterfox
+      - name: Configure Mozconfig
         shell: powershell
         run: |
-          ./mach build
+          $mozconfig = @"
+          ac_add_options --target=x86_64-pc-mingw32
+          ac_add_options --enable-application=browser
+          ac_add_options --enable-artifact-builds
+          ac_add_options --disable-debug
+          ac_add_options --enable-optimize
+          "@
+          $mozconfig | Out-File -FilePath .mozconfig -Encoding ascii
 
-      - name: Package Installer
-        shell: powershell
+      - name: Compile Firefox
+        shell: cmd
         run: |
-          ./mach package
+          call C:\mozilla-build\start-shell.bat cd "%cd%" && ./mach build
 
-      - name: Prepare Release Artifacts
+      - name: Package Windows Binaries
         shell: powershell
         run: |
           mkdir staging
-          # Search everywhere inside the workspace for packaged zip and exe files
-          Get-ChildItem -Path . -Filter *.zip -Recurse | Copy-Item -Destination staging\
-          Get-ChildItem -Path . -Filter *.exe -Recurse | Copy-Item -Destination staging\
-          
-          # Fallback check to ensure files exist before moving to release step
-          if ((Get-ChildItem staging).Count -eq 0) {
-            Write-Error "No packaged build files found!"
-            exit 1
+          Get-ChildItem -Path . -Filter "firefox.exe" -Recurse | ForEach-Object {
+              $binDir = $_.Directory.FullName
+              Compress-Archive -Path "$binDir\*" -DestinationPath "staging\firefox-biui_selected-windows-x64.zip" -Force
           }
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "win-v${{ github.run_number }}"
-          name: "Waterfox Windows Build #${{ github.run_number }}"
-          body: "Automated Windows build compiled successfully via iPhone 17 Pro Max."
+          tag_name: "v-biui_selected-win"
+          name: "Firefox Windows v-biui_selected"
+          body: "Automated custom-branded Firefox Windows build compiled via iPhone 17 Pro Max."
           draft: false
           prerelease: false
-          files: staging/*
+          files: staging/firefox-biui_selected-windows-x64.zip
