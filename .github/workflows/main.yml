@@ -1,13 +1,12 @@
-name: Build Firefox Linux Release
+name: Build Firefox Windows Release (MSVC Cross)
 on:
   workflow_dispatch:
 
 jobs:
-  build-linux:
+  build-windows-msvc:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    # Explicitly overrides and resets any global ambient environment variables
     env:
       MOZ_APP_VERSION: "130.0"
       BUILDID: "20260622000000"
@@ -20,38 +19,48 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Check and Reset Local Version Files
+      - name: Install System Utilities
         run: |
-          # Confirms the exact state of versioning configurations
+          sudo apt-get update
+          sudo apt-get install -y zip unzip uuid-dev
+
+      - name: Sanitize Local Code Version Files
+        run: |
           echo -n "130.0" > browser/config/version.txt
           echo -n "130.0" > config/milestone.txt
-          
-          echo "=== Active Configuration Check ==="
-          echo "Source file version: $(cat browser/config/version.txt)"
+          echo "Sanitized all codebase version files to 130.0."
 
-      - name: Configure Mozconfig
+      - name: Configure Cross-Compile MSVC Mozconfig
         run: |
-          echo "ac_add_options --enable-application=browser" > .mozconfig
-          echo "ac_add_options --enable-artifact-builds" >> .mozconfig
-          echo "ac_add_options --disable-debug" >> .mozconfig
-          echo "ac_add_options --enable-optimize" >> .mozconfig
+          # Overwrite and create a fresh .mozconfig strictly for Windows target assembly
+          cat << 'EOF' > .mozconfig
+          ac_add_options --target=x86_64-pc-windows-msvc
+          ac_add_options --enable-application=browser
+          ac_add_options --enable-artifact-builds
+          ac_add_options --disable-debug
+          EOF
+          echo "=== Verified .mozconfig Contents ==="
+          cat .mozconfig
 
-      - name: Compile Firefox
+      - name: Assemble Firefox Windows Binaries
         run: |
           ./mach build
 
-      - name: Package Firefox Binaries
+      - name: Package Windows Artifacts Manually
         run: |
-          mkdir -p staging/firefox-browser
-          cp -r obj-*/dist/bin/* staging/firefox-browser/ || cp -r obj-*/dist/bin staging/firefox-browser/
-          tar -czf firefox-biui_selected-linux-x64.tar.gz -C staging firefox-browser
+          mkdir -p staging/firefox-windows
+          
+          # Extracts the compiled windows binaries from the newly generated msvc object directory
+          cp -r obj-x86_64-pc-windows-msvc/dist/bin/* staging/firefox-windows/ || cp -r obj-*/dist/bin/* staging/firefox-windows/
+          
+          cd staging && zip -r ../firefox-biui_selected-windows-x64.zip firefox-windows/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v-biui_selected-linux"
-          name: "Firefox Linux v-biui_selected"
-          body: "Automated custom-labeled Firefox Linux build compiled via iPhone 17 Pro Max."
+          tag_name: "v-biui_selected-win"
+          name: "Firefox Windows v-biui_selected"
+          body: "Automated custom-labeled Firefox Windows MSVC build cross-assembled via iPhone 17 Pro Max."
           draft: false
           prerelease: false
-          files: firefox-biui_selected-linux-x64.tar.gz
+          files: firefox-biui_selected-windows-x64.zip
