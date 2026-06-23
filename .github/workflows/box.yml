@@ -59,7 +59,8 @@ jobs:
       - name: Compile Firefox using MozillaBuild
         shell: cmd
         run: |
-          call C:\mozilla-build\start-shell.bat cd "%cd%" && ./mach build
+          ./mach build
+          ./mach package
 
       - name: Auto-Find and Package Windows Binaries
         shell: powershell
