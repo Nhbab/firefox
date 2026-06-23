@@ -52,7 +52,6 @@ jobs:
           $mozconfig = @"
           ac_add_options --target=x86_64-pc-mingw32
           ac_add_options --enable-application=browser
-          ac_add_options --enable-artifact-builds
           ac_add_options --disable-debug
           "@
           $mozconfig | Out-File -FilePath .mozconfig -Encoding ascii
